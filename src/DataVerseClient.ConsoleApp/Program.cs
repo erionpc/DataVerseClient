@@ -1,4 +1,5 @@
 ﻿using DataVerseApiSample.ConsoleApp;
+using Microsoft.Crm.Sdk.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk.Query;
@@ -21,6 +22,8 @@ try
     var serviceClient = new ServiceClient(new Uri(dataVerseConfig.Url ?? ""), dataVerseConfig.ClientId, dataVerseConfig.ClientSecret, dataVerseConfig.UseUniqueInstance);
 
     Console.WriteLine($"Connected to the DataVerse web-API: {serviceClient.ConnectedOrgFriendlyName}");
+    var whoIAm = (WhoAmIResponse)serviceClient.Execute(new WhoAmIRequest());
+    Console.WriteLine($"as user id: {whoIAm.UserId}");
 
     while (true)
     {
