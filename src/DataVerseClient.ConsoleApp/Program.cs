@@ -39,7 +39,7 @@ try
             Console.WriteLine($"Found: {entitiesFound.TotalRecordCount}");
 
             Console.WriteLine(string.Join(System.Environment.NewLine,
-                entitiesFound.Entities.ToString()));
+                entitiesFound.Entities));
             
             Console.WriteLine();
         }
