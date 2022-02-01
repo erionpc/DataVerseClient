@@ -9,6 +9,7 @@ try
         new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", true, true)
+            .AddUserSecrets<Program>()
             .Build();
 
     var dataVerseConfig = new DataVerseConfiguration();
