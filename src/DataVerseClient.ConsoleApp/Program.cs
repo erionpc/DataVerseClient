@@ -18,7 +18,7 @@ try
     if (!dataVerseConfig.IsValid())
         throw new Exception("Invalid configuration");
 
-    var serviceClient = new ServiceClient(new Uri(dataVerseConfig.Url ?? ""), dataVerseConfig.ClientId, dataVerseConfig.ClientSecret, true);
+    var serviceClient = new ServiceClient(new Uri(dataVerseConfig.Url ?? ""), dataVerseConfig.ClientId, dataVerseConfig.ClientSecret, dataVerseConfig.UseUniqueInstance);
 
     Console.WriteLine($"Connected to the DataVerse web-API: {serviceClient.ConnectedOrgFriendlyName}");
 
