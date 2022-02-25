@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DataVerseApiSample.ConsoleApp
+namespace DataVerseClient.ConsoleApp
 {
     public class DataVerseConfiguration
     {
