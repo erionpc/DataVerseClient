@@ -3,6 +3,7 @@ using Microsoft.Crm.Sdk.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 using System.Linq;
 
@@ -88,31 +89,40 @@ try
                     {
                         AcquireParameter("name", ref upsert_name);
                         AcquireParameter("app name", ref upsert_appName);
-                        AcquireParameter("email", ref upsert_email);
+                        AcquireParameter("email address", ref upsert_email);
                         AcquireParameter("user id", ref upsert_userId, optional: true);
                         AcquireParameter("app id", ref upsert_appId);
                     }
 
-                    var upsertInvitationResponse = UpsertInvitation(serviceClient, new Invitation(upsert_name, upsert_appName, upsert_email, upsert_userId, upsert_appId));
-                    Console.WriteLine("Invitation upserted");
-                    Console.WriteLine(Environment.NewLine);
+                    await UpsertInvitation(serviceClient, new Invitation(upsert_name, upsert_appName, upsert_email, upsert_userId, upsert_appId));
+                    //await CreateOrUpdateInvitation(serviceClient, new Invitation(upsert_name, upsert_appName, upsert_email, upsert_userId, upsert_appId));
+                    Console.WriteLine($"Invitation upserted{Environment.NewLine}");
 
                     break;
 
                 case "5":
                     Console.WriteLine($"{Environment.NewLine}Revoking invitation...");
+                    string? revoke_name = "";
+                    string? revoke_appName = "";
                     string? revoke_email = "";
+                    string? revoke_userId = "";
                     string? revoke_appId = "";
-                    while (string.IsNullOrWhiteSpace(revoke_email)
+                    while (string.IsNullOrWhiteSpace(revoke_name)
+                        || string.IsNullOrWhiteSpace(revoke_appName)
+                        || string.IsNullOrWhiteSpace(revoke_email)
+                        || string.IsNullOrWhiteSpace(revoke_userId)
                         || string.IsNullOrWhiteSpace(revoke_appId))
                     {
+                        AcquireParameter("name", ref revoke_name);
+                        AcquireParameter("app name", ref revoke_appName);
                         AcquireParameter("email address", ref revoke_email);
+                        AcquireParameter("user id", ref revoke_userId, optional: true);
                         AcquireParameter("app id", ref revoke_appId);
                     }
 
-                    var upsertInvitationResponse3 = RevokeInvitation(serviceClient, new Invitation(revoke_email, revoke_appId));
-                    Console.WriteLine("Invitation revoked");
-                    Console.WriteLine(Environment.NewLine);
+                    await UpsertInvitation(serviceClient, new Invitation(revoke_name, revoke_appName, revoke_email, revoke_userId, revoke_appId, revoked: true));
+                    //await RevokeInvitation(serviceClient, new Invitation(revoke_name, revoke_appName, revoke_email, revoke_userId, revoke_appId, revoked: true));
+                    Console.WriteLine($"Invitation revoked{Environment.NewLine}");
 
                     break;
 
@@ -125,8 +135,7 @@ try
                     }
 
                     await DeleteInvitation(serviceClient, new Guid(id));
-                    Console.WriteLine("Invitation deleted");
-                    Console.WriteLine(Environment.NewLine);
+                    Console.WriteLine($"Invitation deleted{Environment.NewLine}");
 
                     break;
 
@@ -246,7 +255,41 @@ async Task<Entity?> GetInvitation(ServiceClient serviceClient, Invitation invita
     return entities.Entities.FirstOrDefault();
 }
 
-async Task UpsertInvitation(ServiceClient serviceClient, Invitation invitation)
+Task UpsertInvitation(ServiceClient serviceClient, Invitation invitation)
+{
+    KeyAttributeCollection keyAttributes = new()
+    {
+        { brhub_applicationid, invitation.AppId },
+        { brhub_username, invitation.EmailAddress }
+    };
+
+    Entity invitationEntity = new(brhub_apphubinvite, keyAttributes);
+    invitationEntity[brhub_name] = invitation.UserNameApp;
+    invitationEntity[brhub_expirydate] = invitation.ExpiryDate;
+
+    if (!string.IsNullOrWhiteSpace(invitation.UserId))
+    {
+        invitationEntity[brhub_userid] = invitation.UserId;
+    }
+
+    if (invitation.IsActive)
+    {
+        invitationEntity.Attributes[brhub_revokeinvitation] = new OptionSetValue(int.Parse(Invitation.STATUS_ACTIVE));
+    }
+    else if (invitation.IsRevoked)
+    {
+        invitationEntity.Attributes[brhub_revokeinvitation] = new OptionSetValue(int.Parse(Invitation.STATUS_REVOKED));
+    }
+
+    UpsertRequest request = new()
+    {
+        Target = invitationEntity
+    };
+
+    return serviceClient.ExecuteAsync(request);
+}
+
+async Task CreateOrUpdateInvitation(ServiceClient serviceClient, Invitation invitation)
 {
     var entity = await GetInvitation(serviceClient, invitation);
     if (entity == null)
@@ -265,8 +308,8 @@ async Task UpdateInvitation(ServiceClient serviceClient, Invitation invitation)
     if (entity == null)
         throw new Exception("Invitation not found");
 
-    entity.Attributes[brhub_expirydate] = DateTime.UtcNow.AddDays(7);
-    entity.Attributes[brhub_revokeinvitation] = Invitation.STATUS_ACTIVE;
+    entity[brhub_expirydate] = DateTime.UtcNow.AddDays(7);
+    entity[brhub_revokeinvitation] = Invitation.STATUS_ACTIVE;
 
     await serviceClient.UpdateAsync(entity).ConfigureAwait(false);
 }
@@ -277,7 +320,7 @@ async Task RevokeInvitation(ServiceClient serviceClient, Invitation invitation)
     if (entity == null)
         throw new Exception("Invitation not found");
 
-    entity.Attributes[brhub_revokeinvitation] = Invitation.STATUS_REVOKED;
+    entity[brhub_revokeinvitation] = Invitation.STATUS_REVOKED;
 
     await serviceClient.UpdateAsync(entity).ConfigureAwait(false);
 }
