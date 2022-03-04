@@ -9,6 +9,7 @@ using System.Linq;
 
 const string brhub_apphubinvite = "brhub_apphubinvite";
 const string adx_externalidentity = "adx_externalidentity";
+const string adx_username = "adx_username";
 const string brhub_name = "brhub_name";
 const string brhub_username = "brhub_username";
 const string brhub_applicationid = "brhub_applicationid";
@@ -46,9 +47,10 @@ try
             Console.WriteLine("1. Get users");
             Console.WriteLine("2. Get invitations");
             Console.WriteLine("3. Get user by id");
-            Console.WriteLine("4. Upsert invitation");
-            Console.WriteLine("5. Revoke invitation");
-            Console.WriteLine("6. Delete invitation");
+            Console.WriteLine("4. Get invitation by email address and app id");
+            Console.WriteLine("5. Upsert invitation");
+            Console.WriteLine("6. Revoke invitation");
+            Console.WriteLine("7. Delete invitation");
             var choice = Console.ReadLine();
             switch (choice)
             {
@@ -76,6 +78,20 @@ try
                     break;
 
                 case "4":
+                    Console.WriteLine($"{Environment.NewLine}Getting invitation by email address and app id...");
+                    string? emailAddress = "";
+                    string? appId = "";
+                    while (string.IsNullOrWhiteSpace(emailAddress)
+                        || string.IsNullOrWhiteSpace(appId))
+                    {
+                        AcquireParameter("email address", ref emailAddress);
+                        AcquireParameter("app id", ref appId);
+                    }
+                    var invitation = await GetInvitationByEmailAddressAndAppId(serviceClient, emailAddress, appId);
+                    PrintEntity(invitation!);
+                    break;
+
+                case "5":
                     Console.WriteLine($"{Environment.NewLine}Upserting invitation...");
                     string? upsert_name = "";
                     string? upsert_appName = "";
@@ -100,7 +116,7 @@ try
 
                     break;
 
-                case "5":
+                case "6":
                     Console.WriteLine($"{Environment.NewLine}Revoking invitation...");
                     string? revoke_name = "";
                     string? revoke_appName = "";
@@ -126,7 +142,7 @@ try
 
                     break;
 
-                case "6":
+                case "7":
                     Console.WriteLine($"{Environment.NewLine}Deleting invitation...");
                     string? id = "";
                     while (string.IsNullOrWhiteSpace(id))
@@ -140,7 +156,7 @@ try
                     break;
 
                 default:
-                    throw new Exception("Select 1-6");
+                    throw new Exception("Select 1-7");
             }
         }
         catch (Exception ex) 
@@ -222,12 +238,25 @@ Task<EntityCollection> GetEntityByCriteria(ServiceClient serviceClient, string e
     return serviceClient.RetrieveMultipleAsync(query);
 }
 
-
 async Task<Entity?> GetUserByUserId(ServiceClient serviceClient, string userId) 
 { 
     var entities = await GetEntityByCriteria(serviceClient, adx_externalidentity, new List<Tuple<string, ConditionOperator, string>>() 
     {
-        new("adx_username", ConditionOperator.Equal, userId)
+        new(adx_username, ConditionOperator.Equal, userId)
+    });
+
+    if (!entities.Entities.Any())
+        throw new Exception("User not found");
+
+    return entities.Entities.FirstOrDefault();
+}
+
+async Task<Entity?> GetInvitationByEmailAddressAndAppId(ServiceClient serviceClient, string emailAddress, string appId)
+{
+    var entities = await GetEntityByCriteria(serviceClient, brhub_apphubinvite, new List<Tuple<string, ConditionOperator, string>>()
+    {
+        new(brhub_username, ConditionOperator.Equal, emailAddress),
+        new(brhub_applicationid, ConditionOperator.Equal, appId)
     });
 
     if (!entities.Entities.Any())
